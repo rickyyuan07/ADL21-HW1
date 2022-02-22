@@ -5,9 +5,13 @@ from pathlib import Path
 from typing import Dict
 
 import torch
+import torch.nn as nn
+from torch.utils.data.dataloader import DataLoader
+import torch.optim as optim
 from tqdm import trange
 
 from dataset import SeqClsDataset
+from model import SeqClassifier
 from utils import Vocab
 
 TRAIN = "train"
@@ -24,24 +28,90 @@ def main(args):
 
     data_paths = {split: args.data_dir / f"{split}.json" for split in SPLITS}
     data = {split: json.loads(path.read_text()) for split, path in data_paths.items()}
+    
     datasets: Dict[str, SeqClsDataset] = {
         split: SeqClsDataset(split_data, vocab, intent2idx, args.max_len)
         for split, split_data in data.items()
     }
     # TODO: crecate DataLoader for train / dev datasets
+    train_loader = DataLoader(dataset=datasets[TRAIN], 
+                              batch_size=args.batch_size, 
+                              collate_fn=datasets[TRAIN].collate_fn)
+    val_loader = DataLoader(dataset=datasets[DEV], 
+                              batch_size=args.batch_size, 
+                              collate_fn=datasets[DEV].collate_fn)
 
     embeddings = torch.load(args.cache_dir / "embeddings.pt")
     # TODO: init model and move model to target device(cpu / gpu)
-    model = None
-
+    device = args.device
+    model = SeqClassifier(embeddings=embeddings,
+                          hidden_size=args.hidden_size,
+                          num_layers=args.num_layers,
+                          dropout=args.dropout,
+                          bidirectional=args.bidirectional,
+                          num_class=len(intent2idx)) # 150
+                          
+    model = model.to(device)
+    # loss function
+    criterion = nn.CrossEntropyLoss() 
     # TODO: init optimizer
-    optimizer = None
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    best_acc = 0.0
     epoch_pbar = trange(args.num_epoch, desc="Epoch")
-    for epoch in epoch_pbar:
+    for num_epoch in epoch_pbar:
+        train_acc = 0.0
+        train_loss = 0.0
+        val_acc = 0.0
+        val_loss = 0.0
         # TODO: Training loop - iterate over train dataloader and update model weights
+        model.train()
+        for i, data in enumerate(train_loader):
+            inputs, labels = data['text'], data['intent']
+            labels = [intent2idx[label] for label in labels]
+
+            inputs, labels = torch.LongTensor(inputs), torch.LongTensor(labels)
+            inputs, labels = inputs.to(device), labels.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            
+            batch_loss = criterion(outputs, labels)
+            _, train_pred = torch.max(outputs, 1) # get the index of the class with the highest probability
+            batch_loss.backward() 
+            optimizer.step() 
+
+            train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
+            train_loss += batch_loss.item()
+            
         # TODO: Evaluation loop - calculate accuracy and save model weights
-        pass
+        model.eval()
+        with torch.no_grad():
+            for i, data in enumerate(val_loader):
+                inputs, labels = data['text'], data['intent']
+                labels = [intent2idx[label] for label in labels]
+
+                inputs, labels = torch.LongTensor(inputs), torch.LongTensor(labels)
+                inputs, labels = inputs.to(device), labels.to(device)
+
+                outputs = model(inputs)
+                batch_loss = criterion(outputs, labels) 
+                _, val_pred = torch.max(outputs, 1) 
+            
+                val_acc += (val_pred.cpu() == labels.cpu()).sum().item() # get the index of the class with the highest probability
+                val_loss += batch_loss.item()
+
+            print('[{:03d}/{:03d}] Train Acc: {:3.6f} Loss: {:3.6f} | Val Acc: {:3.6f} loss: {:3.6f}'.format(
+                args.num_epoch, num_epoch, train_acc/len(datasets[TRAIN]), train_loss/len(train_loader), 
+                val_acc/len(datasets[DEV]), val_loss/len(val_loader)
+            ))
+
+            # if the model improves, save a checkpoint at this epoch
+            if val_acc > best_acc:
+                best_acc = val_acc
+                torch.save(model.state_dict(), args.ckpt_dir / "best.pt")
+                print('saving model with acc {:.3f}'.format(best_acc/len(datasets[DEV])))
+
 
     # TODO: Inference on test set
 
@@ -80,13 +150,13 @@ def parse_args() -> Namespace:
     parser.add_argument("--lr", type=float, default=1e-3)
 
     # data loader
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=128) # 128
 
     # training
     parser.add_argument(
         "--device", type=torch.device, help="cpu, cuda, cuda:0, cuda:1", default="cpu"
     )
-    parser.add_argument("--num_epoch", type=int, default=100)
+    parser.add_argument("--num_epoch", type=int, default=100) # 100
 
     args = parser.parse_args()
     return args
