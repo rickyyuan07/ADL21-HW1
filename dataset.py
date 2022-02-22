@@ -35,11 +35,10 @@ class SeqClsDataset(Dataset):
 
     def collate_fn(self, samples: List[Dict]) -> Dict:
         # TODO: implement collate_fn
-        texts, intents, ids = [], [], []
-        for sample in samples:
-            texts.append(sample['text'])
-            ids.append(sample['id'])
-            intents.append(sample['intent'])
+        texts = [sample['text'] for sample in samples]
+        texts = self.vocab.encode_batch(texts)
+        intents = [sample['intent'] for sample in samples] # labels
+        ids = [sample['id'] for sample in samples]
         return {'text': texts, 'intent': intents, 'id': ids}
 
     def label2idx(self, label: str):
