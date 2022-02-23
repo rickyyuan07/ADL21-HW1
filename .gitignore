@@ -3,5 +3,7 @@ ckpt/
 cache/
 
 *.zip
+*.txt
+*.csv
 
 __pycache__/
