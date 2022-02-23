@@ -49,21 +49,23 @@ def main(args):
                           num_layers=args.num_layers,
                           dropout=args.dropout,
                           bidirectional=args.bidirectional,
-                          num_class=len(intent2idx)) # 150
+                          num_class=len(intent2idx) # 150
+    )
                           
     model = model.to(device)
     # loss function
     criterion = nn.CrossEntropyLoss() 
     # TODO: init optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    optimizer = optim.Adam(model.parameters(), 
+                            lr=args.lr, 
+                            weight_decay=args.weight_decay,
+    )
 
     best_acc = 0.0
     epoch_pbar = trange(args.num_epoch, desc="Epoch")
     for num_epoch in epoch_pbar:
-        train_acc = 0.0
-        train_loss = 0.0
-        val_acc = 0.0
-        val_loss = 0.0
+        train_acc, train_loss, val_acc, val_loss = 0.0, 0.0, 0.0, 0.0
         # TODO: Training loop - iterate over train dataloader and update model weights
         model.train()
         for i, data in enumerate(train_loader):
@@ -79,6 +81,8 @@ def main(args):
             batch_loss = criterion(outputs, labels)
             _, train_pred = torch.max(outputs, 1) # get the index of the class with the highest probability
             batch_loss.backward() 
+            
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1) # clipping
             optimizer.step() 
 
             train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
@@ -109,7 +113,7 @@ def main(args):
             # if the model improves, save a checkpoint at this epoch
             if val_acc > best_acc:
                 best_acc = val_acc
-                torch.save(model.state_dict(), args.ckpt_dir / "best.pt")
+                torch.save(model.state_dict(), args.ckpt_dir / args.ckpt_name)
                 print('saving model with acc {:.3f}'.format(best_acc/len(datasets[DEV])))
 
 
@@ -136,25 +140,28 @@ def parse_args() -> Namespace:
         help="Directory to save the model file.",
         default="./ckpt/intent/",
     )
+    parser.add_argument("--ckpt_name", type=Path, default="/best.pt")
 
     # data
     parser.add_argument("--max_len", type=int, default=128)
 
     # model
-    parser.add_argument("--hidden_size", type=int, default=512)
+    parser.add_argument("--hidden_size", type=int, default=512) # 512
     parser.add_argument("--num_layers", type=int, default=2)
-    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--dropout", type=float, default=0.1) # 0.1
     parser.add_argument("--bidirectional", type=bool, default=True)
 
     # optimizer
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--momentum", type=float, default=0.9)
+    parser.add_argument("--weight_decay", type=float, default=1e-5)
 
     # data loader
     parser.add_argument("--batch_size", type=int, default=128) # 128
 
     # training
     parser.add_argument(
-        "--device", type=torch.device, help="cpu, cuda, cuda:0, cuda:1", default="cpu"
+        "--device", type=torch.device, help="cpu, cuda, cuda:0, cuda:1", default="cuda:0"
     )
     parser.add_argument("--num_epoch", type=int, default=100) # 100
 
@@ -165,4 +172,5 @@ def parse_args() -> Namespace:
 if __name__ == "__main__":
     args = parse_args()
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
+    print(args)
     main(args)
