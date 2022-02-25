@@ -80,12 +80,14 @@ class SeqSlotClassifier(torch.nn.Module):
             bidirectional=bidirectional,
         )
         self.out = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(in_features=self.encoder_output_size, out_features=hidden_size//2),
-            # nn.BatchNorm1d(hidden_size//2),
             nn.Dropout(dropout),
             nn.ReLU(),
-            nn.Linear(in_features=hidden_size//2, out_features=num_class),
+            nn.Linear(in_features=self.encoder_output_size, out_features=hidden_size),
+            nn.LayerNorm(hidden_size),
+            # nn.BatchNorm1d(hidden_size), 
+            nn.Dropout(dropout),
+            nn.ReLU(),
+            nn.Linear(in_features=hidden_size, out_features=num_class),
         )
 
     @property
@@ -95,13 +97,8 @@ class SeqSlotClassifier(torch.nn.Module):
 
     def forward(self, batch) -> Dict[str, torch.Tensor]:
         # TODO: implement model forward
-        # print(batch.shape) # (128, 1X-2X) = (batch_size, max_len)
         x = self.embed(batch)
         r_out, _ = self.rnn(x, None)
         # print(r_out.shape) # (batch_size, max_len, encode_output_size*hidden_layer)
-        # input("pause...")
-        # out = self.out(r_out[:, time_step, :]) # feed (batch_size, encode_output_size*hidden_layer)
         out = self.out(r_out)
-        # print(out.shape)
-        # input()
         return out
