@@ -36,7 +36,8 @@ def main(args):
     # TODO: crecate DataLoader for train / dev datasets
     train_loader = DataLoader(dataset=datasets[TRAIN], 
                               batch_size=args.batch_size, 
-                              collate_fn=datasets[TRAIN].collate_fn)
+                              collate_fn=datasets[TRAIN].collate_fn,
+                              shuffle=True)
     val_loader = DataLoader(dataset=datasets[DEV], 
                               batch_size=args.batch_size, 
                               collate_fn=datasets[DEV].collate_fn)
@@ -147,7 +148,7 @@ def parse_args() -> Namespace:
         help="Directory to save the model file.",
         default="./ckpt/intent/",
     )
-    parser.add_argument("--ckpt_name", type=Path, default="/best.pt")
+    parser.add_argument("--ckpt_name", type=Path, default="best.pt")
 
     # data
     parser.add_argument("--max_len", type=int, default=128)
