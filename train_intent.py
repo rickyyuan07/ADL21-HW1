@@ -68,6 +68,7 @@ def main(args):
         train_acc, train_loss, val_acc, val_loss = 0.0, 0.0, 0.0, 0.0
         # TODO: Training loop - iterate over train dataloader and update model weights
         model.train()
+        max_norm = 0 # maximum gradient norm of batches
         for i, data in enumerate(train_loader):
             inputs, labels = data['text'], data['intent']
             labels = [intent2idx[label] for label in labels]
@@ -82,7 +83,13 @@ def main(args):
             _, train_pred = torch.max(outputs, 1) # get the index of the class with the highest probability
             batch_loss.backward() 
             
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1) # clipping
+            total_norm = 0
+            for param in model.parameters():
+                param_norm = param.grad.norm(2)
+                total_norm += param_norm ** 2
+            max_norm = max(max_norm, total_norm)
+            
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10) # clipping
             optimizer.step() 
 
             train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
