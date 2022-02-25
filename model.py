@@ -31,10 +31,11 @@ class SeqClassifier(torch.nn.Module):
         )
         self.out = nn.Sequential(
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(in_features=self.encoder_output_size, out_features=hidden_size//2),
             nn.BatchNorm1d(hidden_size//2),
-            nn.Dropout(dropout),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(in_features=hidden_size//2, out_features=num_class),
         )
 
@@ -82,12 +83,12 @@ class SeqSlotClassifier(torch.nn.Module):
         self.out = nn.Sequential(
             nn.Dropout(dropout),
             nn.ReLU(),
-            nn.Linear(in_features=self.encoder_output_size, out_features=hidden_size),
-            nn.LayerNorm(hidden_size),
-            # nn.BatchNorm1d(hidden_size), 
-            nn.Dropout(dropout),
-            nn.ReLU(),
-            nn.Linear(in_features=hidden_size, out_features=num_class),
+            nn.LayerNorm(self.encoder_output_size),
+            nn.Linear(in_features=self.encoder_output_size, out_features=num_class),
+            # nn.BatchNorm1d(hidden_size//2), 
+            # nn.Dropout(dropout),
+            # nn.ReLU(),
+            # nn.Linear(in_features=hidden_size//2, out_features=num_class),
         )
 
     @property
