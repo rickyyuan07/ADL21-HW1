@@ -95,7 +95,7 @@ def main(args):
                 total_norm += param_norm ** 2
             max_norm = max(max_norm, total_norm)
             
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 10) # clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1) # clipping
             optimizer.step() 
 
             for j in range(train_pred.shape[0]):
@@ -168,7 +168,7 @@ def parse_args() -> Namespace:
     # model
     parser.add_argument("--hidden_size", type=int, default=512) # 512
     parser.add_argument("--num_layers", type=int, default=2)
-    parser.add_argument("--dropout", type=float, default=0.1) # 0.1
+    parser.add_argument("--dropout", type=float, default=0.2) # 0.1
     parser.add_argument("--bidirectional", type=bool, default=True)
 
     # optimizer
