@@ -34,6 +34,7 @@ class SeqClassifier(torch.nn.Module):
             nn.Dropout(dropout),
             nn.Linear(in_features=self.encoder_output_size, out_features=hidden_size//2),
             nn.BatchNorm1d(hidden_size//2),
+            # nn.LayerNorm(hidden_size//2),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(in_features=hidden_size//2, out_features=num_class),
@@ -50,7 +51,10 @@ class SeqClassifier(torch.nn.Module):
         x = self.embed(batch)
         r_out, _ = self.rnn(x, None)
         if self.bidirectional:
-            out = self.out(torch.mean(r_out, dim=1))
+            # out = self.out(torch.mean(r_out, dim=1)) # mean
+            # reference: https://towardsdatascience.com/understanding-bidirectional-rnn-in-pytorch-5bd25a5dd66
+            r_out = torch.cat((r_out[:, -1, :self.hidden_size], r_out[:, 0, self.hidden_size:]), dim=1)
+            out = self.out(r_out)
         else:
             out = self.out(r_out[:, -1, :])
         return out
