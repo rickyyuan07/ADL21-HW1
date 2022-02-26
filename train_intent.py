@@ -84,17 +84,19 @@ def main(args):
             _, train_pred = torch.max(outputs, 1) # get the index of the class with the highest probability
             batch_loss.backward() 
             
+            # ref: https://github.com/pytorch/pytorch/issues/309
             total_norm = 0
             for param in model.parameters():
                 param_norm = param.grad.norm(2)
                 total_norm += param_norm ** 2
             max_norm = max(max_norm, total_norm)
-            
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 10) # clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5) # clipping
+
             optimizer.step() 
 
             train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
             train_loss += batch_loss.item()
+        print(f"Epoch: {num_epoch} with maximum gradient norm = {max_norm}")
             
         # TODO: Evaluation loop - calculate accuracy and save model weights
         model.eval()
