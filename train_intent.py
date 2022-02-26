@@ -33,7 +33,7 @@ def main(args):
         split: SeqClsDataset(split_data, vocab, intent2idx, args.max_len)
         for split, split_data in data.items()
     }
-    # TODO: crecate DataLoader for train / dev datasets
+    # create DataLoader for train / dev datasets
     train_loader = DataLoader(dataset=datasets[TRAIN], 
                               batch_size=args.batch_size, 
                               collate_fn=datasets[TRAIN].collate_fn,
@@ -43,39 +43,37 @@ def main(args):
                               collate_fn=datasets[DEV].collate_fn)
 
     embeddings = torch.load(args.cache_dir / "embeddings.pt")
-    # TODO: init model and move model to target device(cpu / gpu)
+    # init model and move model to target device(cpu / gpu)
     device = args.device
+    num_class = len(intent2idx)
     model = SeqClassifier(embeddings=embeddings,
                           hidden_size=args.hidden_size,
                           num_layers=args.num_layers,
                           dropout=args.dropout,
                           bidirectional=args.bidirectional,
-                          num_class=len(intent2idx) # 150
-    )
+                          num_class=num_class) # 150
                           
     model = model.to(device)
     # loss function
     criterion = nn.CrossEntropyLoss() 
-    # TODO: init optimizer
+    # init optimizer
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     optimizer = optim.Adam(model.parameters(), 
-                            lr=args.lr, 
-                            weight_decay=args.weight_decay,
-    )
-
+                        lr=args.lr, 
+                        weight_decay=args.weight_decay)
+    
     best_acc = 0.0
     epoch_pbar = trange(args.num_epoch, desc="Epoch")
     for num_epoch in epoch_pbar:
         train_acc, train_loss, val_acc, val_loss = 0.0, 0.0, 0.0, 0.0
-        # TODO: Training loop - iterate over train dataloader and update model weights
+        # Training loop - iterate over train dataloader and update model weights
         model.train()
         max_norm = 0 # maximum gradient norm of batches
         for i, data in enumerate(train_loader):
             inputs, labels = data['text'], data['intent']
             labels = [intent2idx[label] for label in labels]
 
-            inputs, labels = torch.LongTensor(inputs), torch.LongTensor(labels)
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs, labels = torch.LongTensor(inputs).to(device), torch.LongTensor(labels).to(device)
             
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -98,15 +96,14 @@ def main(args):
             train_loss += batch_loss.item()
         print(f"Epoch: {num_epoch} with maximum gradient norm = {max_norm}")
             
-        # TODO: Evaluation loop - calculate accuracy and save model weights
+        # Evaluation loop - calculate accuracy and save model weights
         model.eval()
         with torch.no_grad():
             for i, data in enumerate(val_loader):
                 inputs, labels = data['text'], data['intent']
                 labels = [intent2idx[label] for label in labels]
 
-                inputs, labels = torch.LongTensor(inputs), torch.LongTensor(labels)
-                inputs, labels = inputs.to(device), labels.to(device)
+                inputs, labels = torch.LongTensor(inputs).to(device), torch.LongTensor(labels).to(device)
 
                 outputs = model(inputs)
                 batch_loss = criterion(outputs, labels) 
@@ -125,9 +122,6 @@ def main(args):
                 best_acc = val_acc
                 torch.save(model.state_dict(), args.ckpt_dir / args.ckpt_name)
                 print('saving model with acc {:.3f}'.format(best_acc/len(datasets[DEV])))
-
-
-    # TODO: Inference on test set
 
 
 def parse_args() -> Namespace:
