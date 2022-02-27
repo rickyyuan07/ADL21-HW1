@@ -22,7 +22,7 @@ def main(args):
 
     data = json.loads(args.test_file.read_text())
     dataset = SeqSlotDataset(data, vocab, tag2idx, args.max_len)
-    # TODO: create DataLoader for test dataset
+    # create DataLoader for test dataset
     test_loader = DataLoader(
         dataset=dataset, 
         batch_size=args.batch_size, 
@@ -43,12 +43,11 @@ def main(args):
     model = model.to(device)
     model.eval()
 
-    ckpt = torch.load(args.ckpt_path / args.ckpt_name)
+    ckpt = torch.load(args.ckpt_path)
     # load weights into model
     model.load_state_dict(ckpt)
 
-    # TODO: predict dataset
-    print('predict dataset...')
+    # predict dataset
     prediction = []
     for i, data in enumerate(tqdm(test_loader)):
         inputs, tokens_len = data['tokens'], data['len']
@@ -60,13 +59,12 @@ def main(args):
         ids = data['id']
         prediction += list(zip(ids, preds))
 
-    # TODO: write prediction to file (args.pred_file)
+    # write prediction to file (args.pred_file)
     print(f'Writing to {args.pred_file}...')
     with open(args.pred_file, 'w') as f:
         print('id,tags', file=f)
         for id, pred in prediction:
             print(f'{id},{pred}', file=f)
-    print('finish!')
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
@@ -87,10 +85,9 @@ def parse_args() -> Namespace:
         "--ckpt_path",
         type=Path,
         help="Path to model checkpoint.",
-        default="./ckpt/slot/",
+        default="./ckpt/slot/best.pt",
         # required=True
     )
-    parser.add_argument("--ckpt_name", type=Path, default="best.pt")
     parser.add_argument("--pred_file", type=Path, default="pred.tags.csv")
 
     # data

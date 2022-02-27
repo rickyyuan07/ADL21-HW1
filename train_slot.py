@@ -98,7 +98,7 @@ def main(args):
             for j in range(train_pred.shape[0]):
                 train_acc += (train_pred[j].cpu() == labels[j].cpu()).sum().item() == max_len
             train_loss += batch_loss.item()
-        print(f"Epoch: {num_epoch} with maximum gradient norm = {max_norm}")
+        print(f"\nEpoch: {num_epoch} with maximum gradient norm = {max_norm}")
             
         # Evaluation loop - calculate accuracy and save model weights
         model.eval()

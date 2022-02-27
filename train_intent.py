@@ -80,7 +80,7 @@ def main(args):
             
             batch_loss = criterion(outputs, labels)
             _, train_pred = torch.max(outputs, 1) # get the index of the class with the highest probability
-            batch_loss.backward() 
+            batch_loss.backward()
             
             # ref: https://github.com/pytorch/pytorch/issues/309
             total_norm = 0
@@ -90,11 +90,11 @@ def main(args):
             max_norm = max(max_norm, total_norm)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5) # clipping
 
-            optimizer.step() 
+            optimizer.step()
 
             train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
             train_loss += batch_loss.item()
-        print(f"Epoch: {num_epoch} with maximum gradient norm = {max_norm}")
+        print(f"\nEpoch: {num_epoch} with maximum gradient norm = {max_norm}")
             
         # Evaluation loop - calculate accuracy and save model weights
         model.eval()
@@ -152,11 +152,11 @@ def parse_args() -> Namespace:
     # model
     parser.add_argument("--hidden_size", type=int, default=512) # 512
     parser.add_argument("--num_layers", type=int, default=2)
-    parser.add_argument("--dropout", type=float, default=0.1) # 0.1
+    parser.add_argument("--dropout", type=float, default=0.2) # 0.1
     parser.add_argument("--bidirectional", type=bool, default=True)
 
     # optimizer
-    parser.add_argument("--lr", type=float, default=5e-4)
+    parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--weight_decay", type=float, default=1e-5)
 
