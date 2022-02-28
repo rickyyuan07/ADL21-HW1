@@ -45,12 +45,13 @@ def main(args):
     # init model and move model to target device(cpu / gpu)
     device = args.device
     num_class = len(tag2idx)
-    model = SeqSlotClassifier(embeddings=embeddings,
-                          hidden_size=args.hidden_size,
-                          num_layers=args.num_layers,
-                          dropout=args.dropout,
-                          bidirectional=args.bidirectional,
-                          num_class=num_class) # 9
+    model = SeqSlotClassifier(model=args.model,
+                            embeddings=embeddings,
+                            hidden_size=args.hidden_size,
+                            num_layers=args.num_layers,
+                            dropout=args.dropout,
+                            bidirectional=args.bidirectional,
+                            num_class=num_class) # 9
                           
     model = model.to(device)
     # loss function
@@ -83,7 +84,7 @@ def main(args):
             
             batch_loss = criterion(outputs.view(-1, num_class), labels.view(-1))
             _, train_pred = torch.max(outputs, 2) # get the index of the class with the highest probability
-            batch_loss.backward() 
+            batch_loss.backward()
             
             # ref: https://github.com/pytorch/pytorch/issues/309
             total_norm = 0
@@ -131,6 +132,8 @@ def main(args):
                 best_acc = val_acc
                 torch.save(model.state_dict(), args.ckpt_dir / args.ckpt_name)
                 print('saving model with acc {:.3f}'.format(best_acc/len(datasets[DEV])))
+    
+    print('Overall best model: acc {:.3f}'.format(best_acc/len(datasets[DEV])))
 
 
 def parse_args() -> Namespace:
@@ -159,6 +162,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--max_len", type=int, default=128)
 
     # model
+    parser.add_argument("--model", type=str, default='GRU')
     parser.add_argument("--hidden_size", type=int, default=512) # 512
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.2) # 0.1
@@ -170,7 +174,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--weight_decay", type=float, default=1e-5)
 
     # data loader
-    parser.add_argument("--batch_size", type=int, default=128) # 128
+    parser.add_argument("--batch_size", type=int, default=256) # 128
 
     # training
     parser.add_argument(

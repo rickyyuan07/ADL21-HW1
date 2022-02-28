@@ -46,12 +46,14 @@ def main(args):
     # init model and move model to target device(cpu / gpu)
     device = args.device
     num_class = len(intent2idx)
-    model = SeqClassifier(embeddings=embeddings,
-                          hidden_size=args.hidden_size,
-                          num_layers=args.num_layers,
-                          dropout=args.dropout,
-                          bidirectional=args.bidirectional,
-                          num_class=num_class) # 150
+    model = SeqClassifier(model=args.model,
+                        embeddings=embeddings,
+                        hidden_size=args.hidden_size,
+                        num_layers=args.num_layers,
+                        dropout=args.dropout,
+                        bidirectional=args.bidirectional,
+                        bidirect_type=args.bidirect_type,
+                        num_class=num_class) # 150
                           
     model = model.to(device)
     # loss function
@@ -69,6 +71,7 @@ def main(args):
         # Training loop - iterate over train dataloader and update model weights
         model.train()
         max_norm = 0 # maximum gradient norm of batches
+        after_norm = 0
         for i, data in enumerate(train_loader):
             inputs, labels = data['text'], data['intent']
             labels = [intent2idx[label] for label in labels]
@@ -88,13 +91,19 @@ def main(args):
                 param_norm = param.grad.norm(2)
                 total_norm += param_norm ** 2
             max_norm = max(max_norm, total_norm)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5) # clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10) # clipping
+            total_norm = 0
+            for param in model.parameters():
+                param_norm = param.grad.norm(2)
+                total_norm += param_norm ** 2
+            after_norm = max(after_norm, total_norm)
 
             optimizer.step()
 
             train_acc += (train_pred.cpu() == labels.cpu()).sum().item()
             train_loss += batch_loss.item()
-        print(f"\nEpoch: {num_epoch} with maximum gradient norm = {max_norm}")
+        print(f"\nEpoch: {num_epoch} with maximum gradient norm = {torch.sqrt(max_norm):.5f}")
+        print(f"Epoch: {num_epoch} with after gradient norm = {torch.sqrt(after_norm):.5f}")
             
         # Evaluation loop - calculate accuracy and save model weights
         model.eval()
@@ -106,8 +115,8 @@ def main(args):
                 inputs, labels = torch.LongTensor(inputs).to(device), torch.LongTensor(labels).to(device)
 
                 outputs = model(inputs)
-                batch_loss = criterion(outputs, labels) 
-                _, val_pred = torch.max(outputs, 1) 
+                batch_loss = criterion(outputs, labels)
+                _, val_pred = torch.max(outputs, 1)
             
                 val_acc += (val_pred.cpu() == labels.cpu()).sum().item() # get the index of the class with the highest probability
                 val_loss += batch_loss.item()
@@ -122,6 +131,8 @@ def main(args):
                 best_acc = val_acc
                 torch.save(model.state_dict(), args.ckpt_dir / args.ckpt_name)
                 print('saving model with acc {:.3f}'.format(best_acc/len(datasets[DEV])))
+
+    print('Overall best model: acc {:.3f}'.format(best_acc/len(datasets[DEV])))
 
 
 def parse_args() -> Namespace:
@@ -150,10 +161,12 @@ def parse_args() -> Namespace:
     parser.add_argument("--max_len", type=int, default=128)
 
     # model
+    parser.add_argument("--model", type=str, default='GRU')
     parser.add_argument("--hidden_size", type=int, default=512) # 512
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.2) # 0.1
     parser.add_argument("--bidirectional", type=bool, default=True)
+    parser.add_argument("--bidirect_type", type=str, help="concate or mean", default='concate')
 
     # optimizer
     parser.add_argument("--lr", type=float, default=2e-4)
@@ -161,7 +174,7 @@ def parse_args() -> Namespace:
     parser.add_argument("--weight_decay", type=float, default=1e-5)
 
     # data loader
-    parser.add_argument("--batch_size", type=int, default=128) # 128
+    parser.add_argument("--batch_size", type=int, default=256) # 128
 
     # training
     parser.add_argument(
