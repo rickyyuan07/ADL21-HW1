@@ -29,14 +29,14 @@ class SeqClassifier(torch.nn.Module):
         self.embed = Embedding.from_pretrained(embeddings, freeze=False)
         self.input_size = embeddings.shape[1]
         # model architecture
-        self.cnn = nn.Conv1d(
-            in_channels=self.embed.embedding_dim,
-            out_channels=self.embed.embedding_dim,
-            kernel_size=5,
-            stride=1,
-            padding=2, # 'same'
-            padding_mode='zeros',
-        )
+        # self.cnn = nn.Conv1d(
+        #     in_channels=self.embed.embedding_dim,
+        #     out_channels=self.embed.embedding_dim,
+        #     kernel_size=5,
+        #     stride=1,
+        #     padding=2, # 'same'
+        #     padding_mode='zeros',
+        # )
         self.rnn = Model[model](
             input_size=self.input_size,
             hidden_size=hidden_size,
@@ -66,7 +66,7 @@ class SeqClassifier(torch.nn.Module):
         # print(batch.shape) # (128, 1X-2X) = (batch_size, max_len)
         x = self.embed(batch)
         # print(x.shape) # (batch_size, max_len, self.embed.embedding_dim=300)
-        x = self.cnn(x.permute(0, 2, 1)).permute(0, 2, 1)
+        # x = self.cnn(x.permute(0, 2, 1)).permute(0, 2, 1)
         r_out, _ = self.rnn(x, None)
         if self.bidirectional:
             if self.bidirect_type == 'mean':
@@ -97,14 +97,14 @@ class SeqSlotClassifier(torch.nn.Module):
         self.embed = Embedding.from_pretrained(embeddings, freeze=False)
         self.input_size = embeddings.shape[1]
         # model architecture
-        self.cnn = nn.Conv1d(
-            in_channels=self.embed.embedding_dim,
-            out_channels=self.embed.embedding_dim,
-            kernel_size=5,
-            stride=1,
-            padding=2, # 'same'
-            padding_mode='zeros',
-        )
+        # self.cnn = nn.Conv1d(
+        #     in_channels=self.embed.embedding_dim,
+        #     out_channels=self.embed.embedding_dim,
+        #     kernel_size=5,
+        #     stride=1,
+        #     padding=2, # 'same'
+        #     padding_mode='zeros',
+        # )
         self.rnn = Model[model](
             input_size=self.input_size,
             hidden_size=hidden_size,
@@ -132,7 +132,7 @@ class SeqSlotClassifier(torch.nn.Module):
     def forward(self, batch) -> Dict[str, torch.Tensor]:
         # implement model forward
         x = self.embed(batch)
-        x = self.cnn(x.permute(0, 2, 1)).permute(0, 2, 1)
+        # x = self.cnn(x.permute(0, 2, 1)).permute(0, 2, 1)
         r_out, _ = self.rnn(x, None)
         # print(r_out.shape) # (batch_size, max_len, encode_output_size*hidden_layer)
         out = self.out(r_out)
