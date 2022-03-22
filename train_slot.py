@@ -54,6 +54,11 @@ def main(args):
                             num_class=num_class) # 9
                           
     model = model.to(device)
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            torch.nn.init.orthogonal_(m.weight)
+            m.bias.data.fill_(0.01)
+    model.apply(init_weights)
     # loss function
     criterion = nn.CrossEntropyLoss() 
     # init optimizer
